@@ -1,23 +1,70 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import pandas.io.sql as sqlio
+import psycopg2
+from sshtunnel import SSHTunnelForwarder
+
+# Create an SSH tunnel
+tunnel = SSHTunnelForwarder(
+    ('localhost', 2222),
+    ssh_username='vagrant',
+    ssh_private_key='C:/Users/nikit/Desktop/private_key',
+    remote_bind_address=('localhost', 5432),
+    local_bind_address=('localhost', 6543)
+)
+# Start the tunnel
+tunnel.start()
+
+# Create a database connection
+conn = psycopg2.connect(
+    database='benchmark',
+    user='postgres',
+    host=tunnel.local_bind_host,
+    port=tunnel.local_bind_port,
+)
+
+rest = 'limit 8 offset 16'
+get = 'limit 8'
+
+# Задать параметры
+request = rest
+framework_name = "'falcon'"
+level = 64
+
+
+framework_nameWithoutLast = framework_name[:-1]
+framework_nameWithoutAll = framework_name[1:-1]
+framework_namePyPy = framework_nameWithoutLast + "pypy'"
+level = str(level)
+
+if request == 'limit 8':
+    name = framework_nameWithoutAll[0].upper()+framework_nameWithoutAll[1:] + " (" + level + ", GET-запросы)"
+else:
+    name = framework_nameWithoutAll[0].upper()+framework_nameWithoutAll[1:] + " (" + level + ", REST-запросы)"
+
+
+sql = """select metric, value from "result" where framework = """ + framework_name + """ and "level" = """ + level + """ and (metric = 'minimum_latency' or metric = 'maximum_latency' or metric = 'average_latency' or metric = 'percentile_50' or metric = 'percentile_75' or metric = 'percentile_90' or metric = 'percentile_99' or metric = 'percentile_99.999') """ + request + """;"""
+sqlPyPy = """select metric, value from "result" where framework = """ + framework_namePyPy + """ and "level" = """ + level + """ and (metric = 'minimum_latency' or metric = 'maximum_latency' or metric = 'average_latency' or metric = 'percentile_50' or metric = 'percentile_75' or metric = 'percentile_90' or metric = 'percentile_99' or metric = 'percentile_99.999') """ + request + """;"""
+
+dat = sqlio.read_sql_query(sql, conn)
+datPyPy = sqlio.read_sql_query(sqlPyPy, conn)
+conn = None
+
+# Stop the tunnel
+tunnel.stop()
+
+print(dat)
+print(datPyPy)
 
 index = np.arange(8)
-headers = ['metric', 'value']
-df1 = pd.read_csv('C:/Users/nikit/Desktop/Bench_Frameworks/data/each_frwrk/falcon512.csv', names=headers)
-df2 = pd.read_csv('C:/Users/nikit/Desktop/Bench_Frameworks/data/each_frwrk/falconpypy512.csv', names=headers)
 
-x1 = df1['metric'][1::]
-y1 = df1['value'][1::]
+x1 = dat['metric']
+y1 = dat['value']
 
-x2 = df2['metric'][1::]
-y2 = df2['value'][1::]
+x2 = datPyPy['metric']
+y2 = datPyPy['value']
 
-
-
-# plot
-
-name = 'Falcon 3.0.1 (512)'
 plt.title(name)
 plt.xlabel("Показатель")
 plt.ylabel("Время ожидания, мс")
