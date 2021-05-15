@@ -24,13 +24,13 @@ conn = psycopg2.connect(
     port=tunnel.local_bind_port,
 )
 
-rest = 'limit 8 offset 16'
+post = 'limit 8 offset 16'
 get = 'limit 8'
 
 # Задать параметры
-request = rest
+request = get
 framework_name = "'falcon'"
-level = 64
+level = 512
 
 
 framework_nameWithoutLast = framework_name[:-1]
@@ -39,9 +39,9 @@ framework_namePyPy = framework_nameWithoutLast + "pypy'"
 level = str(level)
 
 if request == 'limit 8':
-    name = framework_nameWithoutAll[0].upper()+framework_nameWithoutAll[1:] + " (" + level + ", GET-запросы)"
+    name = framework_nameWithoutAll[0].upper()+framework_nameWithoutAll[1:] + " (" + level + " подключений, GET-запросы)"
 else:
-    name = framework_nameWithoutAll[0].upper()+framework_nameWithoutAll[1:] + " (" + level + ", REST-запросы)"
+    name = framework_nameWithoutAll[0].upper()+framework_nameWithoutAll[1:] + " (" + level + " подключений, POST-запросы)"
 
 
 sql = """select metric, value from "result" where framework = """ + framework_name + """ and "level" = """ + level + """ and (metric = 'minimum_latency' or metric = 'maximum_latency' or metric = 'average_latency' or metric = 'percentile_50' or metric = 'percentile_75' or metric = 'percentile_90' or metric = 'percentile_99' or metric = 'percentile_99.999') """ + request + """;"""
